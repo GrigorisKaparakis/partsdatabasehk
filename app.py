@@ -13,9 +13,21 @@ st_autorefresh(interval=15000, key="datarefresh")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def get_data():
-    return conn.read(ttl=0) # ttl=0 για να παίρνει πάντα τα πιο φρέσκα δεδομένα
+    try:
+        data = conn.read(ttl=0)
+        # Αν το sheet είναι τελείως άδειο, φτιάξε ένα κενό dataframe με τις στήλες μας
+        if data.empty:
+            return pd.DataFrame(columns=["ΑΝΤΑΛΛΑΚΤΙΚΑ & ΠΟΣΟΤΗΤΑ", "ΠΕΛΑΤΗΣ", "ΣΧΟΛΙΑ", "ΤΗΛΕΦΩΝΟ", "ΠΡΟΚΑΤΑΒΟΛΗ", "ΗΜΕΡΟΜΗΝΙΑ", "ΚΑΤΑΣΤΑΣΗ", "ΕΤΑΙΡΕΙΑ"])
+        return data
+    except:
+        # Σε περίπτωση οποιουδήποτε σφάλματος ανάγνωσης
+        return pd.DataFrame(columns=["ΑΝΤΑΛΛΑΚΤΙΚΑ & ΠΟΣΟΤΗΤΑ", "ΠΕΛΑΤΗΣ", "ΣΧΟΛΙΑ", "ΤΗΛΕΦΩΝΟ", "ΠΡΟΚΑΤΑΒΟΛΗ", "ΗΜΕΡΟΜΗΝΙΑ", "ΚΑΤΑΣΤΑΣΗ", "ΕΤΑΙΡΕΙΑ"])
 
 df = get_data()
+
+# ΕΞΥΠΝΟΣ ΕΛΕΓΧΟΣ: Αν για κάποιο λόγο λείπει η στήλη ΕΤΑΙΡΕΙΑ, πρόσθεσέ την κενή
+if "ΕΤΑΙΡΕΙΑ" not in df.columns:
+    df["ΕΤΑΙΡΕΙΑ"] = ""
 
 # --- SIDEBAR ---
 st.sidebar.header("🏢 ΕΤΑΙΡΕΙΕΣ")
