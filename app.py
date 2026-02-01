@@ -50,8 +50,30 @@ brand_df = df[df["ΕΤΑΙΡΕΙΑ"] == brand_filter]
 view_cols = ["ΑΝΤΑΛΛΑΚΤΙΚΑ & ΠΟΣΟΤΗΤΑ", "ΠΕΛΑΤΗΣ", "ΣΧΟΛΙΑ", "ΤΗΛΕΦΩΝΟ", "ΠΡΟΚΑΤΑΒΟΛΗ", "ΗΜΕΡΟΜΗΝΙΑ", "ΚΑΤΑΣΤΑΣΗ"]
 
 def data_manager(status_list, key):
+    # Παίρνουμε τα δεδομένα που αντιστοιχούν στο Tab
     subset = brand_df[brand_df["ΚΑΤΑΣΤΑΣΗ"].isin(status_list)][view_cols]
-    edited_df = st.data_editor(subset, use_container_width=True, num_rows="dynamic", key=key)
+    
+    # Ο editor με το drop-down (Selectbox)
+    edited_df = st.data_editor(
+        subset,
+        column_config={
+            "ΑΝΤΑΛΛΑΚΤΙΚΑ & ΠΟΣΟΤΗΤΑ": st.column_config.TextColumn(
+                width="large",
+                help="Shift+Enter για νέα γραμμή"
+            ),
+            "ΚΑΤΑΣΤΑΣΗ": st.column_config.SelectboxColumn(
+                "ΚΑΤΑΣΤΑΣΗ",
+                help="Επιλέξτε στάδιο παραγγελίας",
+                width="medium",
+                options=["ΕΚΚΡΕΜΕΙ", "ΗΡΘΕ", "ΤΟ ΠΗΡΕ", "ΑΚΥΡΩΘΗΚΕ"], # Εδώ ορίζονται οι επιλογές
+                required=True,
+            ),
+            "ΗΜΕΡΟΜΗΝΙΑ": st.column_config.TextColumn(disabled=True) # Κλειδωμένη ημερομηνία
+        },
+        use_container_width=True,
+        num_rows="dynamic",
+        key=key
+    )
 
     if not edited_df.equals(subset):
         # Ενημέρωση των αλλαγών πίσω στο αρχικό dataframe
