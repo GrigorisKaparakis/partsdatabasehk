@@ -61,8 +61,29 @@ with st.expander("➕ ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ"):
 # --- TABS ---
 t_active, t_done, t_cancel = st.tabs(["⚡ ΤΡΕΧΟΥΣΕΣ", "✅ ΟΛΟΚΛΗΡΩΜΕΝΑ", "❌ ΑΚΥΡΩΜΕΝΑ"])
 
+# Φιλτράρισμα δεδομένων
 brand_df = df[df["ΕΤΑΙΡΕΙΑ"] == brand_filter]
 view_cols = ["ΑΝΤΑΛΛΑΚΤΙΚΑ & ΠΟΣΟΤΗΤΑ", "ΠΕΛΑΤΗΣ", "ΣΧΟΛΙΑ", "ΤΗΛΕΦΩΝΟ", "ΠΡΟΚΑΤΑΒΟΛΗ", "ΗΜΕΡΟΜΗΝΙΑ", "ΚΑΤΑΣΤΑΣΗ"]
+
+# --- TAB: ΤΡΕΧΟΥΣΕΣ (ΕΔΩ ΜΟΝΟ ΤΟ REFRESH) ---
+with t_active:
+    # Ενεργοποιούμε το refresh ΜΟΝΟ μέσα σε αυτό το Tab
+    st_autorefresh(interval=30000, key="active_refresh") 
+    
+    st.subheader("Εκκρεμή & Ήρθαν")
+    data_manager(["ΕΚΚΡΕΜΕΙ", "ΗΡΘΕ"], "active_editor")
+
+# --- TAB: ΟΛΟΚΛΗΡΩΜΕΝΑ ---
+with t_done:
+    st.subheader("Ιστορικό Παραλαβών")
+    # Εδώ δεν υπάρχει autorefresh. Τα δεδομένα θα ανανεωθούν μόνο αν ο χρήστης 
+    # αλλάξει εταιρεία ή πατήσει το κουμπί της καταχώρησης.
+    data_manager(["ΤΟ ΠΗΡΕ"], "done_editor")
+
+# --- TAB: ΑΚΥΡΩΜΕΝΑ ---
+with t_cancel:
+    st.subheader("Ακυρωμένες Παραγγελίες")
+    data_manager(["ΑΚΥΡΩΘΗΚΕ"], "cancel_editor")
 
 def data_manager(status_list, key):
     # Φιλτράρισμα δεδομένων για το συγκεκριμένο Tab
