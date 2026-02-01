@@ -4,30 +4,31 @@ from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 from streamlit_autorefresh import st_autorefresh
 
-st.set_page_config(page_title="Moto ERP Cloud", layout="wide")
+st.set_page_config(page_title="Moto ERP Cloud 2026", layout="wide")
 
-# Αυτόματη ανανέωση κάθε 15 δευτερόλεπτα
-st_autorefresh(interval=15000, key="datarefresh")
+# Αυτόματη ανανέωση κάθε 20 δευτερόλεπτα
+st_autorefresh(interval=20000, key="datarefresh")
 
 # Σύνδεση με Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def get_data():
     try:
+        # ttl=0 για να παίρνει πάντα τα τελευταία δεδομένα από το Sheet
         data = conn.read(ttl=0)
-        # Αν το sheet είναι τελείως άδειο, φτιάξε ένα κενό dataframe με τις στήλες μας
-        if data.empty:
+        if data is None or data.empty:
             return pd.DataFrame(columns=["ΑΝΤΑΛΛΑΚΤΙΚΑ & ΠΟΣΟΤΗΤΑ", "ΠΕΛΑΤΗΣ", "ΣΧΟΛΙΑ", "ΤΗΛΕΦΩΝΟ", "ΠΡΟΚΑΤΑΒΟΛΗ", "ΗΜΕΡΟΜΗΝΙΑ", "ΚΑΤΑΣΤΑΣΗ", "ΕΤΑΙΡΕΙΑ"])
         return data
-    except:
-        # Σε περίπτωση οποιουδήποτε σφάλματος ανάγνωσης
+    except Exception:
         return pd.DataFrame(columns=["ΑΝΤΑΛΛΑΚΤΙΚΑ & ΠΟΣΟΤΗΤΑ", "ΠΕΛΑΤΗΣ", "ΣΧΟΛΙΑ", "ΤΗΛΕΦΩΝΟ", "ΠΡΟΚΑΤΑΒΟΛΗ", "ΗΜΕΡΟΜΗΝΙΑ", "ΚΑΤΑΣΤΑΣΗ", "ΕΤΑΙΡΕΙΑ"])
 
 df = get_data()
 
-# ΕΞΥΠΝΟΣ ΕΛΕΓΧΟΣ: Αν για κάποιο λόγο λείπει η στήλη ΕΤΑΙΡΕΙΑ, πρόσθεσέ την κενή
-if "ΕΤΑΙΡΕΙΑ" not in df.columns:
-    df["ΕΤΑΙΡΕΙΑ"] = ""
+# Διασφάλιση ότι όλες οι στήλες υπάρχουν για να μην κρασάρει
+required_cols = ["ΑΝΤΑΛΛΑΚΤΙΚΑ & ΠΟΣΟΤΗΤΑ", "ΠΕΛΑΤΗΣ", "ΣΧΟΛΙΑ", "ΤΗΛΕΦΩΝΟ", "ΠΡΟΚΑΤΑΒΟΛΗ", "ΗΜΕΡΟΜΗΝΙΑ", "ΚΑΤΑΣΤΑΣΗ", "ΕΤΑΙΡΕΙΑ"]
+for col in required_cols:
+    if col not in df.columns:
+        df[col] = ""
 
 # --- SIDEBAR ---
 st.sidebar.header("🏢 ΕΤΑΙΡΕΙΕΣ")
@@ -37,7 +38,7 @@ brand_filter = st.sidebar.radio("Επιλέξτε:", brands)
 # --- ΝΕΑ ΚΑΤΑΧΩΡΗΣΗ ---
 with st.expander("➕ ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ"):
     with st.form("quick_form", clear_on_submit=True):
-        f_parts = st.text_area("Ανταλλακτικά (Κωδικός X Ποσότητα)")
+        f_parts = st.text_area("Ανταλλακτικά (Κωδικός X Ποσότητα - Enter για νέα γραμμή)", height=100)
         c1, c2, c3, c4 = st.columns(4)
         f_cust = c1.text_input("Πελάτης")
         f_phone = c2.text_input("Τηλέφωνο")
@@ -53,44 +54,40 @@ with st.expander("➕ ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ"):
             }])
             updated_df = pd.concat([df, new_row], ignore_index=True)
             conn.update(data=updated_df)
-            st.success("Έγινε η καταχώρηση!")
             st.rerun()
 
 # --- TABS ---
 t_active, t_done, t_cancel = st.tabs(["⚡ ΤΡΕΧΟΥΣΕΣ", "✅ ΟΛΟΚΛΗΡΩΜΕΝΑ", "❌ ΑΚΥΡΩΜΕΝΑ"])
+
 brand_df = df[df["ΕΤΑΙΡΕΙΑ"] == brand_filter]
 view_cols = ["ΑΝΤΑΛΛΑΚΤΙΚΑ & ΠΟΣΟΤΗΤΑ", "ΠΕΛΑΤΗΣ", "ΣΧΟΛΙΑ", "ΤΗΛΕΦΩΝΟ", "ΠΡΟΚΑΤΑΒΟΛΗ", "ΗΜΕΡΟΜΗΝΙΑ", "ΚΑΤΑΣΤΑΣΗ"]
 
 def data_manager(status_list, key):
-    # Παίρνουμε τα δεδομένα που αντιστοιχούν στο Tab
+    # Φιλτράρισμα δεδομένων για το συγκεκριμένο Tab
     subset = brand_df[brand_df["ΚΑΤΑΣΤΑΣΗ"].isin(status_list)][view_cols]
     
-    # Ο editor με το drop-down (Selectbox)
+    # Χρήση width='stretch' αντί για use_container_width (Ενημέρωση 2026)
     edited_df = st.data_editor(
         subset,
         column_config={
-            "ΑΝΤΑΛΛΑΚΤΙΚΑ & ΠΟΣΟΤΗΤΑ": st.column_config.TextColumn(
-                width="large",
-                help="Shift+Enter για νέα γραμμή"
-            ),
+            "ΑΝΤΑΛΛΑΚΤΙΚΑ & ΠΟΣΟΤΗΤΑ": st.column_config.TextColumn(width="large"),
             "ΚΑΤΑΣΤΑΣΗ": st.column_config.SelectboxColumn(
-                "ΚΑΤΑΣΤΑΣΗ",
-                help="Επιλέξτε στάδιο παραγγελίας",
-                width="medium",
-                options=["ΕΚΚΡΕΜΕΙ", "ΗΡΘΕ", "ΤΟ ΠΗΡΕ", "ΑΚΥΡΩΘΗΚΕ"], # Εδώ ορίζονται οι επιλογές
-                required=True,
+                options=["ΕΚΚΡΕΜΕΙ", "ΗΡΘΕ", "ΤΟ ΠΗΡΕ", "ΑΚΥΡΩΘΗΚΕ"],
+                required=True
             ),
-            "ΗΜΕΡΟΜΗΝΙΑ": st.column_config.TextColumn(disabled=True) # Κλειδωμένη ημερομηνία
+            "ΗΜΕΡΟΜΗΝΙΑ": st.column_config.TextColumn(disabled=True)
         },
-        use_container_width=True,
+        width="stretch", 
         num_rows="dynamic",
         key=key
     )
 
+    # Αυτόματη αποθήκευση αν υπάρξει αλλαγή
     if not edited_df.equals(subset):
-        # Ενημέρωση των αλλαγών πίσω στο αρχικό dataframe
-        for index, row in edited_df.iterrows():
-            df.loc[index, view_cols] = row.values
+        # Ενημέρωση του κεντρικού dataframe (df) με βάση τα indexes του subset
+        for index in edited_df.index:
+            df.loc[index, view_cols] = edited_df.loc[index].values
+        
         conn.update(data=df)
         st.rerun()
 
