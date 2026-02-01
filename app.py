@@ -4,22 +4,24 @@ from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 from streamlit_autorefresh import st_autorefresh
 
-st.set_page_config(page_title="Moto ERP Cloud 2026", layout="wide")
+st.set_page_config(page_title="Moto ERP Cloud", layout="wide")
 
-# Αυτόματη ανανέωση κάθε 20 δευτερόλεπτα
-st_autorefresh(interval=20000, key="datarefresh")
+# ΑΥΞΗΣΗ ΧΡΟΝΟΥ: Ανανέωση κάθε 60 δευτερόλεπτα (60000ms) για να μην "χτυπάει" το Quota
+st_autorefresh(interval=60000, key="datarefresh")
 
 # Σύνδεση με Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def get_data():
     try:
-        # ttl=0 για να παίρνει πάντα τα τελευταία δεδομένα από το Sheet
-        data = conn.read(ttl=0)
+        # Αλλάζουμε το ttl σε 10-20 δευτερόλεπτα. 
+        # Έτσι, αν 3 άτομα πατήσουν refresh μαζί, θα πάρουν την ίδια "φρέσκια" εικόνα από τη μνήμη
+        data = conn.read(ttl="20s") 
         if data is None or data.empty:
             return pd.DataFrame(columns=["ΑΝΤΑΛΛΑΚΤΙΚΑ & ΠΟΣΟΤΗΤΑ", "ΠΕΛΑΤΗΣ", "ΣΧΟΛΙΑ", "ΤΗΛΕΦΩΝΟ", "ΠΡΟΚΑΤΑΒΟΛΗ", "ΗΜΕΡΟΜΗΝΙΑ", "ΚΑΤΑΣΤΑΣΗ", "ΕΤΑΙΡΕΙΑ"])
         return data
-    except Exception:
+    except Exception as e:
+        st.error(f"Πρόβλημα σύνδεσης: {e}")
         return pd.DataFrame(columns=["ΑΝΤΑΛΛΑΚΤΙΚΑ & ΠΟΣΟΤΗΤΑ", "ΠΕΛΑΤΗΣ", "ΣΧΟΛΙΑ", "ΤΗΛΕΦΩΝΟ", "ΠΡΟΚΑΤΑΒΟΛΗ", "ΗΜΕΡΟΜΗΝΙΑ", "ΚΑΤΑΣΤΑΣΗ", "ΕΤΑΙΡΕΙΑ"])
 
 df = get_data()
